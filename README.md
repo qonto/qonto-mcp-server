@@ -1,6 +1,6 @@
 # qonto skill
 
-This repository is now a minimal Codex skill for read-only Qonto access.
+This repository is now a minimal agent skill for read-only Qonto access.
 
 For this use case, a skill is the better fit:
 
