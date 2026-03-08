@@ -14,7 +14,7 @@ MCP would make more sense if this project needed to serve many MCP clients or if
 ## layout
 
 - `SKILL.md`
-- `scripts/qonto.py`
+- `scripts/qonto.sh`
 
 ## usage
 
@@ -32,22 +32,29 @@ export QONTO_THIRDPARTY_HOST=https://thirdparty.qonto.com
 export QONTO_STAGING_TOKEN=...
 ```
 
+Required tools:
+
+```bash
+curl
+jq
+```
+
 Inspect the available operations:
 
 ```bash
-python3 scripts/qonto.py list-operations
+bash scripts/qonto.sh list-operations
 ```
 
 Inspect one operation:
 
 ```bash
-python3 scripts/qonto.py describe get_qonto_transaction
+bash scripts/qonto.sh describe get_qonto_transaction
 ```
 
 Execute an operation:
 
 ```bash
-python3 scripts/qonto.py call get_qonto_transaction --params '{"transaction_id":"...","includes":["labels","attachments"]}'
+bash scripts/qonto.sh call get_qonto_transaction --params '{"transaction_id":"...","includes":["labels","attachments"]}'
 ```
 
 The script returns normalized JSON with:

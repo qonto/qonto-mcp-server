@@ -1,6 +1,6 @@
 ---
 name: qonto
-description: Use this skill when a user needs read-only access to Qonto data from an API key and organization ID. It covers organization details, transactions, transaction attachments, external transfers, beneficiaries, attachments, labels, memberships, client and supplier invoices, credit notes, statements, clients, and approval requests through one local script that returns normalized JSON.
+description: Use this skill when a user needs read-only access to Qonto data from an API key and organization ID. It covers organization details, transactions, transaction attachments, external transfers, beneficiaries, attachments, labels, memberships, client and supplier invoices, credit notes, statements, clients, and approval requests through one local shell script that returns normalized JSON.
 ---
 
 # Qonto
@@ -25,24 +25,26 @@ Optional:
 
 If `QONTO_THIRDPARTY_HOST` is unset, the script uses `https://thirdparty.qonto.com`.
 
+This skill expects `curl` and `jq` to be available.
+
 ## Workflow
 
 1. List the available operations when you need to inspect the surface:
 
 ```bash
-python3 scripts/qonto.py list-operations
+bash scripts/qonto.sh list-operations
 ```
 
 2. Inspect one operation before calling it when you need the parameter names:
 
 ```bash
-python3 scripts/qonto.py describe get_qonto_transaction
+bash scripts/qonto.sh describe get_qonto_transaction
 ```
 
 3. Execute the operation with JSON params:
 
 ```bash
-python3 scripts/qonto.py call get_qonto_transaction --params '{"transaction_id":"...","includes":["labels","attachments"]}'
+bash scripts/qonto.sh call get_qonto_transaction --params '{"transaction_id":"...","includes":["labels","attachments"]}'
 ```
 
 4. Return the relevant JSON fields to the user. The script always emits normalized JSON with:
