@@ -2,8 +2,6 @@
 
 This repository is now a minimal Codex skill for read-only Qonto access.
 
-The previous MCP server mostly wrapped Qonto `GET` endpoints with thin registration and transport code. That added MCP ceremony, Docker packaging, and setup overhead without adding much connector value. There was no real abstraction layer for retries, rate limiting, normalization, pagination orchestration, auth lifecycle management, or finance-specific behavior.
-
 For this use case, a skill is the better fit:
 
 - It keeps the integration local and lightweight.
