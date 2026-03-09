@@ -1,1 +1,0 @@
-from .attachments import get_qonto_attachment

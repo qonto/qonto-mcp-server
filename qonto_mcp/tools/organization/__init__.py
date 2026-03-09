@@ -1,1 +1,0 @@
-from .organization import get_qonto_organization
