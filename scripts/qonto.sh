@@ -151,10 +151,20 @@ readonly OPERATIONS_JSON=$(cat <<'EOF'
     ]
   },
   "get_qonto_transactions": {
-    "description": "List transactions for one bank account.",
+    "description": "List transactions for one bank account with pagination, sorting, and date filters.",
     "path": "/v2/transactions",
     "parameters": [
-      { "name": "bank_account_id", "location": "query", "query_name": "bank_account_id", "required": true }
+      { "name": "bank_account_id", "location": "query", "query_name": "bank_account_id", "required": true },
+      { "name": "page", "location": "query", "query_name": "current_page" },
+      { "name": "current_page", "location": "query", "query_name": "current_page" },
+      { "name": "per_page", "location": "query", "query_name": "per_page" },
+      { "name": "updated_at_from", "location": "query", "query_name": "updated_at_from" },
+      { "name": "updated_at_to", "location": "query", "query_name": "updated_at_to" },
+      { "name": "emitted_at_from", "location": "query", "query_name": "emitted_at_from" },
+      { "name": "emitted_at_to", "location": "query", "query_name": "emitted_at_to" },
+      { "name": "settled_at_from", "location": "query", "query_name": "settled_at_from" },
+      { "name": "settled_at_to", "location": "query", "query_name": "settled_at_to" },
+      { "name": "sort_by", "location": "query", "query_name": "sort_by" }
     ]
   },
   "get_qonto_transaction": {
@@ -376,6 +386,7 @@ build_request_json() {
 	local params_json="$3"
 	local host
 	local unknown_names
+	local supported_names
 	local missing_names
 	local path
 	local query_payload='{}'
@@ -393,9 +404,10 @@ build_request_json() {
 
 	host="$(get_host)"
 	unknown_names="$(jq -r --argjson operation "$operation_json" '((keys_unsorted - ($operation.parameters | map(.name)))[])?' <<<"$params_json")"
+	supported_names="$(jq -r --argjson operation "$operation_json" '($operation.parameters // []) | map(.name) | join(", ")' <<<"$params_json")"
 
 	if [ -n "$unknown_names" ]; then
-		jq -n --arg message "Unknown parameters: $(join_lines "$unknown_names")" '{ok: false, error: {type: "validation_error", message: $message}}'
+		jq -n --arg message "Unknown parameters: $(join_lines "$unknown_names"). Supported parameters: ${supported_names}" '{ok: false, error: {type: "validation_error", message: $message}}'
 		return 0
 	fi
 
