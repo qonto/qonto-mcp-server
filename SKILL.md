@@ -1,6 +1,6 @@
 ---
 name: qonto
-description: Use this skill when a user needs read-only access to Qonto data from an API key and organization ID. It covers organization details, transactions, transaction attachments, external transfers, beneficiaries, attachments, labels, memberships, client and supplier invoices, credit notes, statements, clients, and approval requests through one local shell script that returns normalized JSON.
+description: Use this skill when a user needs read-only access to Qonto data from an API key and organization ID. Use strict operation schemas from the local script and never invent parameter names. It covers organization details, transactions, transaction attachments, external transfers, beneficiaries, attachments, labels, memberships, client and supplier invoices, credit notes, statements, clients, and approval requests through one local shell script that returns normalized JSON.
 ---
 
 # Qonto
@@ -35,10 +35,10 @@ This skill expects `curl` and `jq` to be available.
 bash scripts/qonto.sh list-operations
 ```
 
-2. Inspect one operation before calling it when you need the parameter names:
+2. Inspect one operation immediately before calling it. Do not assume parameter names from memory:
 
 ```bash
-bash scripts/qonto.sh describe get_qonto_transaction
+bash scripts/qonto.sh describe get_qonto_transactions
 ```
 
 3. Execute the operation with JSON params:
@@ -54,6 +54,28 @@ bash scripts/qonto.sh call get_qonto_transaction --params '{"transaction_id":"..
 - `request`
 - `data` on success
 - `error` on failure
+
+## Required execution rules
+
+- Never call an operation with guessed params. Use only the exact parameter names returned by `describe`.
+- Never call `get_qonto_transactions` with empty params. `bank_account_id` is required.
+- For "latest transactions" requests, use this order:
+  1. `get_qonto_organization` to fetch `bank_accounts[].id`.
+  2. `get_qonto_transactions` with `{"bank_account_id":"...","per_page":N}`.
+- For `get_qonto_transactions`, valid optional keys are:
+  - `page`
+  - `current_page`
+  - `per_page`
+  - `updated_at_from`
+  - `updated_at_to`
+  - `emitted_at_from`
+  - `emitted_at_to`
+  - `settled_at_from`
+  - `settled_at_to`
+  - `sort_by`
+- Do not use `sort`. The accepted key is `sort_by`.
+- If the API returns `422` after adding optional filters or sorting, retry once with only `bank_account_id` and `per_page`.
+- If a call fails with `validation_error` and `Unknown parameters`, remove unsupported keys and retry with supported keys listed in the error.
 
 ## Notes
 
