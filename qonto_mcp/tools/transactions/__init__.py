@@ -1,2 +1,2 @@
 from .transactions import get_qonto_transactions, get_qonto_transaction
-from .attachments import list_qonto_transaction_attachments
+from .attachments import list_qonto_transaction_attachments, upload_transaction_attachment
