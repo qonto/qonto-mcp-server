@@ -168,6 +168,7 @@ This MCP server provides the following tools for interacting with your Qonto acc
 - **Account Management**: Access account information and balances
 - **Transaction History**: Retrieve and analyze transaction data
 - **Business Operations**: Access business-related financial data
+- **Expense Management**: Create supplier invoices from receipts and submit multi-transfer requests for batch reimbursement
 
 ## Configuration
 

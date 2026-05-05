@@ -1,3 +1,6 @@
+import mimetypes
+import os
+import uuid
 import requests
 from datetime import datetime
 from typing import Dict, Optional
@@ -5,6 +8,9 @@ from requests.exceptions import RequestException
 
 import qonto_mcp
 from qonto_mcp import mcp
+
+
+_SUPPLIER_INVOICE_MIME_TYPES = {"image/jpeg", "image/png", "application/pdf"}
 
 
 @mcp.tool()
@@ -124,3 +130,71 @@ def get_credit_notes(
         return response.json()
     except RequestException as e:
         raise RuntimeError(f"Failed to fetch credit notes {str(e)}")
+
+
+@mcp.tool()
+def create_qonto_supplier_invoice(
+    file_path: Optional[str] = None,
+    attachment_id: Optional[str] = None,
+) -> Dict:
+    """
+    Create a supplier invoice in Qonto from a local file or an existing attachment.
+
+    Submits one supplier invoice (vendor bill) to Qonto's bulk endpoint. Qonto
+    will OCR the document and route it through the standard supplier-invoice
+    approval workflow. Use this to record paid expenses, vendor receipts, or
+    pay-by-invoice items.
+
+    Provide exactly one of:
+        - file_path: a local PDF/PNG/JPEG to upload, OR
+        - attachment_id: the UUID of an attachment already known to Qonto
+          (e.g. one returned by list_qonto_transaction_attachments).
+
+    The endpoint always returns HTTP 200 — even when an individual item fails.
+    Inspect the `errors` array of the returned object to confirm success.
+
+    Args:
+        file_path: Absolute or relative path to a PDF/JPEG/PNG file on disk.
+        attachment_id: UUID of an existing Qonto attachment to convert into
+            a supplier invoice.
+
+    Example: create_qonto_supplier_invoice(file_path="/Users/alice/bills/acme.pdf")
+    """
+    if (file_path is None) == (attachment_id is None):
+        raise ValueError(
+            "Provide exactly one of file_path or attachment_id (not both, not neither)."
+        )
+
+    url = f"{qonto_mcp.thirdparty_host}/v2/supplier_invoices/bulk"
+    idempotency_key = str(uuid.uuid4())
+
+    upload_headers = {**qonto_mcp.headers}
+    upload_headers.pop("Accept", None)
+
+    try:
+        if file_path is not None:
+            if not os.path.isfile(file_path):
+                raise ValueError(f"File not found: {file_path}")
+            mime_type, _ = mimetypes.guess_type(file_path)
+            if mime_type not in _SUPPLIER_INVOICE_MIME_TYPES:
+                raise ValueError(
+                    f"Unsupported file type '{mime_type}'. Must be PDF, JPEG, or PNG."
+                )
+            filename = os.path.basename(file_path)
+            with open(file_path, "rb") as f:
+                files = {
+                    "supplier_invoices[][file]": (filename, f, mime_type),
+                    "supplier_invoices[][idempotency_key]": (None, idempotency_key),
+                }
+                response = requests.post(url, headers=upload_headers, files=files)
+        else:
+            files = {
+                "supplier_invoices[][attachment_id]": (None, attachment_id),
+                "supplier_invoices[][idempotency_key]": (None, idempotency_key),
+            }
+            response = requests.post(url, headers=upload_headers, files=files)
+
+        response.raise_for_status()
+        return response.json()
+    except RequestException as e:
+        raise RuntimeError(f"Failed to create supplier invoice: {str(e)}")
