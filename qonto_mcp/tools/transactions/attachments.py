@@ -40,3 +40,32 @@ def list_qonto_transaction_attachments(
         return response.json()
     except RequestException as e:
         raise RuntimeError(f"Failed to fetch transaction attachments {str(e)}")
+
+
+@mcp.tool()
+def mark_qonto_transaction_attachment_not_required(transaction_id: str):
+    """
+    Marks a transaction as not requiring an attachment in the Qonto API.
+
+    Use this when a transaction (e.g. a small expense, refund, or internal
+    transfer) does not need a receipt/invoice attached, to clear the
+    "attachment required" status.
+
+    Args:
+        transaction_id: UUID of the transaction
+
+    Example: mark_qonto_transaction_attachment_not_required(
+                transaction_id='aab86d8a-0d4c-4749-9a49-0ada88a9c423'
+             )
+    """
+    url = f"{qonto_mcp.thirdparty_host}/v2/transactions/{transaction_id}"
+    payload = {"attachment_required": False}
+
+    try:
+        response = requests.patch(url, headers=qonto_mcp.headers, json=payload)
+        response.raise_for_status()
+        return response.json()
+    except RequestException as e:
+        raise RuntimeError(
+            f"Failed to mark transaction as not requiring attachment: {str(e)}"
+        )
