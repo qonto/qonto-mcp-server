@@ -45,6 +45,8 @@ Questions or security concerns? Contact us at `security@qonto.com`.
 
 ### Option 1: Docker Installation (Recommended)
 
+> Supports both `linux/amd64` (Intel) and `linux/arm64` (Apple Silicon M1/M2/M3) natively.
+
 1. Pull the Docker image:
    ```bash
    docker pull qonto/qonto-mcp-server:latest

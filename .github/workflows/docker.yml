@@ -23,3 +23,4 @@ jobs:
         with:
           push: true
           tags: qonto/qonto-mcp-server:latest
+          platforms: linux/amd64,linux/arm64
