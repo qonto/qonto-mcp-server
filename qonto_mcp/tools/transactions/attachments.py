@@ -1,6 +1,8 @@
+import base64
+import io
+import mimetypes
 import os
 import uuid
-import mimetypes
 from typing import Optional
 import requests
 from requests.exceptions import RequestException
@@ -8,6 +10,11 @@ import qonto_mcp
 from qonto_mcp import mcp
 
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "application/pdf"}
+
+# Soft cap on inline base64 payloads. Qonto's per-attachment limit is 15 MB raw,
+# which inflates to ~20 MB when base64-encoded; past that, JSON-RPC over stdio
+# starts to struggle. Reject early with a clear error rather than failing later.
+MAX_INLINE_BASE64_BYTES = 25 * 1024 * 1024
 
 
 @mcp.tool()
@@ -48,36 +55,108 @@ def list_qonto_transaction_attachments(
 
 
 @mcp.tool()
-def upload_transaction_attachment(transaction_id: str, file_path: str):
+def upload_transaction_attachment(
+    transaction_id: str,
+    file_path: Optional[str] = None,
+    file_content_base64: Optional[str] = None,
+    filename: Optional[str] = None,
+    mime_type: Optional[str] = None,
+):
     """
-    Uploads a file from the local filesystem and attaches it to a Qonto transaction.
+    Uploads a file and attaches it to a Qonto transaction.
+
+    Two input modes — provide exactly one of `file_path` or `file_content_base64`:
+
+      1. file_path: path that the MCP server process can read.
+         When the server runs in Docker, this must be a path INSIDE the
+         container. Mount your host directory at run time, e.g.:
+             docker run -v /Users/alice/receipts:/files:ro qonto-mcp-server
+         and pass `file_path='/files/lunch.pdf'`.
+
+      2. file_content_base64 + filename: base64-encoded bytes plus the original
+         filename. Use this when the server has no shared filesystem with the
+         client (Docker without a mount, remote server, etc.). `mime_type` is
+         optional and inferred from `filename` if omitted. Soft size cap is
+         ~25 MB encoded (≈18 MB raw); Qonto rejects raw files over 15 MB.
 
     Accepted file formats: JPEG, PNG, PDF.
-    The attachment is processed asynchronously — it may not appear immediately when
-    listing attachments.
+    The attachment is processed asynchronously — it may not appear immediately
+    when listing attachments.
 
     Args:
         transaction_id: UUID of the transaction to attach the file to
-        file_path: Absolute or relative path to the file on disk (JPEG/PNG/PDF)
+        file_path: Server-side path to the file (mutually exclusive with
+            file_content_base64)
+        file_content_base64: Base64-encoded file bytes (mutually exclusive
+            with file_path)
+        filename: Original filename — required when using file_content_base64;
+            ignored when using file_path
+        mime_type: Optional MIME-type override; inferred from the filename
+            when absent
 
-    Example: upload_transaction_attachment(
-                transaction_id='aab86d8a-0d4c-4749-9a49-0ada88a9c423',
-                file_path='/Users/alice/receipts/lunch.pdf'
-             )
+    Examples:
+        # Path mode (server has access to the file):
+        upload_transaction_attachment(
+            transaction_id='aab86d8a-0d4c-4749-9a49-0ada88a9c423',
+            file_path='/files/lunch.pdf',
+        )
+
+        # Inline mode (Docker without a mount, or remote server):
+        upload_transaction_attachment(
+            transaction_id='aab86d8a-0d4c-4749-9a49-0ada88a9c423',
+            file_content_base64='JVBERi0xLjQK...',
+            filename='lunch.pdf',
+        )
     """
-    # Validate file exists
-    if not os.path.isfile(file_path):
-        raise ValueError(f"File not found: {file_path}")
-
-    # Detect and validate MIME type
-    mime_type, _ = mimetypes.guess_type(file_path)
-    if mime_type not in ALLOWED_MIME_TYPES:
+    # Exactly one input mode must be provided
+    if (file_path is None) == (file_content_base64 is None):
         raise ValueError(
-            f"Unsupported file type '{mime_type}'. Must be one of: JPEG, PNG, PDF."
+            "Provide exactly one of `file_path` or `file_content_base64`."
+        )
+
+    # Resolve the upload payload (filename, mime_type, file-like object factory)
+    if file_path is not None:
+        if not os.path.isfile(file_path):
+            raise ValueError(
+                f"File not found: {file_path}. "
+                "If the MCP server runs in Docker, the path must exist INSIDE "
+                "the container — mount the host directory with `-v` or use "
+                "`file_content_base64` instead."
+            )
+        upload_filename = os.path.basename(file_path)
+        resolved_mime = mime_type or mimetypes.guess_type(file_path)[0]
+
+        def open_payload():
+            return open(file_path, "rb")
+    else:
+        if not filename:
+            raise ValueError(
+                "`filename` is required when using `file_content_base64` "
+                "(needed to derive the file extension and Qonto's stored name)."
+            )
+        try:
+            content_bytes = base64.b64decode(file_content_base64, validate=True)
+        except Exception as e:
+            raise ValueError(f"Invalid base64 in `file_content_base64`: {e}")
+        if len(content_bytes) > MAX_INLINE_BASE64_BYTES:
+            raise ValueError(
+                f"Decoded payload is {len(content_bytes)} bytes, which exceeds "
+                f"the {MAX_INLINE_BASE64_BYTES}-byte soft cap. Use `file_path` "
+                "with a mounted volume for files this large."
+            )
+        upload_filename = os.path.basename(filename)
+        resolved_mime = mime_type or mimetypes.guess_type(upload_filename)[0]
+
+        def open_payload():
+            return io.BytesIO(content_bytes)
+
+    if resolved_mime not in ALLOWED_MIME_TYPES:
+        raise ValueError(
+            f"Unsupported file type '{resolved_mime}'. "
+            "Must be one of: JPEG, PNG, PDF."
         )
 
     url = f"{qonto_mcp.thirdparty_host}/v2/transactions/{transaction_id}/attachments"
-    filename = os.path.basename(file_path)
 
     # Build upload headers — do NOT set Content-Type manually;
     # requests sets it with the correct multipart boundary automatically.
@@ -86,11 +165,11 @@ def upload_transaction_attachment(transaction_id: str, file_path: str):
     upload_headers.pop("Accept", None)
 
     try:
-        with open(file_path, "rb") as f:
+        with open_payload() as f:
             response = requests.post(
                 url,
                 headers=upload_headers,
-                files={"file": (filename, f, mime_type)},
+                files={"file": (upload_filename, f, resolved_mime)},
             )
         response.raise_for_status()
         # Response may be empty (async processing) or contain attachment id
