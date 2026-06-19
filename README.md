@@ -4,6 +4,11 @@
 
 </div>
 
+> [!IMPORTANT]
+> **Qonto now has an officially supported MCP server.** It is hosted by Qonto, authenticates via OAuth, and supports both read and write operations. Learn more at [mcp.qonto.com](https://mcp.qonto.com).
+>
+> **The official server should be preferred over this local one, which is no longer actively maintained.**
+
 <div align="center">
 
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)
