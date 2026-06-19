@@ -1,13 +1,20 @@
 <div align="center">
 
-# 💸 Qonto Local MCP Server 🤖
+# 💸 Qonto MCP Server 🤖
 
 </div>
 
 > [!IMPORTANT]
-> **Qonto now has an officially supported MCP server.** It is hosted by Qonto, authenticates via OAuth, and supports both read and write operations. Learn more at [mcp.qonto.com](https://mcp.qonto.com).
+> 📣 **Qonto now has an officially supported MCP server, and it's live!** 🎉
+>
+> It is hosted by Qonto, authenticates via OAuth, and supports both read and write operations. Learn more at [mcp.qonto.com](https://mcp.qonto.com).
 >
 > **The official server should be preferred over this local one, which is no longer actively maintained.**
+
+<details>
+<summary>Legacy local server documentation (no longer maintained)</summary>
+
+<br />
 
 <div align="center">
 
@@ -201,3 +208,5 @@ Contributions are welcome! Please feel free to submit issues and enhancement req
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+</details>
