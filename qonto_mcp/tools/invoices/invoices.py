@@ -30,7 +30,7 @@ def get_client_invoices(
     url = f"{qonto_mcp.thirdparty_host}/v2/client_invoices"
     params = {}
     if current_page is not None:
-        params["current_page"] = current_page
+        params["page"] = current_page
     if per_page is not None:
         params["per_page"] = per_page
     if status is not None:
@@ -71,7 +71,7 @@ def get_supplier_invoices(
     url = f"{qonto_mcp.thirdparty_host}/v2/supplier_invoices"
     params = {}
     if current_page is not None:
-        params["current_page"] = current_page
+        params["page"] = current_page
     if per_page is not None:
         params["per_page"] = per_page
     if status is not None:
@@ -110,7 +110,7 @@ def get_credit_notes(
     url = f"{qonto_mcp.thirdparty_host}/v2/credit_notes"
     params = {}
     if current_page is not None:
-        params["current_page"] = current_page
+        params["page"] = current_page
     if per_page is not None:
         params["per_page"] = per_page
     if updated_at_from is not None:
