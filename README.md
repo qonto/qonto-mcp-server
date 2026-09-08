@@ -205,6 +205,16 @@ The server supports both `stdio` and `streamable-http` transport protocols. Use 
 
 Contributions are welcome! Please feel free to submit issues and enhancement requests.
 
+### Running the tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+The suite runs offline: `requests.get` is replaced by a fixture, so no test reaches the Qonto
+API or needs credentials. It also runs on every pull request, on Python 3.10 and 3.13.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
